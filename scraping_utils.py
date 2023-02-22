@@ -32,12 +32,12 @@ def compute_file_hashes(dir, exts=None, algo=hashlib.md5, hashes={}, recurse=Fal
     for name in listdir(dir):
         full_name = join(dir, name)
         ext = name.split('.')[-1]
-        if(isfile(full_name) and (clean_exts is None or ext in exts_clean)):
+        if(isfile(full_name) and (exts_clean is None or ext in exts_clean)):
             with open(full_name, 'rb') as file_in:
                 file_bytes = file_in.read()
                 file_hash = algo(file_bytes).hexdigest()
             if(file_hash not in hashes):
-                hashes[file_hash] = name
+                hashes[file_hash] = full_name
         elif(recurse and isdir(full_name)):
             hashes = compute_file_hashes(full_name, exts=exts, algo=algo, hashes=hashes, recurse=True)
     return hashes
