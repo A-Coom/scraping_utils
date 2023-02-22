@@ -1,15 +1,15 @@
 # Scraping Utils
 A suite of utility functions that are used in my scraping scripts.
 
-## Functions
-#### `clean_exts(exts)`
+# Functions
+## `clean_exts(exts)`
 ```
 Clean a list of extensions to not include a leading dot.
 @param exts - Original list of extensions.
 @return a list of cleaned extensions.
 ```
 
-#### `compute_file_hashes(dir, exts=None, algo=hashlib.md5, hashes={}, recurse=False)`
+### `compute_file_hashes(dir, exts=None, algo=hashlib.md5, hashes={}, recurse=False)`
 ```
 Compute the hashes of files with specified extensions using a specified algorithm function.
 @param dir - String of directory to process.
@@ -20,7 +20,7 @@ Compute the hashes of files with specified extensions using a specified algorith
 @return a dictionary indexed by hash value storing the file name.
 ```
 
-#### `download_urls(dir, urls, algo=hashlib.md5, hashes={})`
+### `download_urls(dir, urls, algo=hashlib.md5, hashes={})`
 ```
 Download media from a list of URLs if the hash has not been seen before.
 @param dir - Destination directory for the download.
@@ -30,11 +30,11 @@ Download media from a list of URLs if the hash has not been seen before.
 @return the new dictionary of hashes.
 ```
 
-## How to Include in Project
+# How to Include in Project
 1. To include scrape_utils in your code, copy all contents from this repository into a folder of any name, e.g. `foobar`.
 2. Move the folder to same directory as the Python file that will use the utility functions, e.g. `/my/python/project/foobar`.
 3. Import `scraping_utils` to the Python file, e.g. `from foobar.scraping_utils import *`.
 
 
-## Disclaimer
+# Disclaimer
 This repository is for personal use. There is no guarantee that the function signatures used in the current version will be compatible with future versions. Use at your own risk.
