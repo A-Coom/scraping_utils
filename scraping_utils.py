@@ -22,10 +22,11 @@ def clean_exts(exts):
 """
 Compute the hashes of files with specified extensions using a specified algorithm function.
 @param dir - String of directory to process.
-@param exts - List of extensions.
-@param algo - Function for the hashing algorithm.
-@param hashes - Map of seen hashes. Index is hash, value is original media name.
-@return a map indexed by hash value storing the file name.
+@param exts - List of extensions. If None, then all extensions are queried.
+@param algo - Function for the hashing algorithm from hashlib.
+@param hashes - Dictionary of seen hashes. Index is hash, value is original media name.
+@param recurse - If true, subdirectories are traversed. If false, subdirectories are skipped.
+@return a dictionary indexed by hash value storing the file name.
 """
 def compute_file_hashes(dir, exts=None, algo=hashlib.md5, hashes={}, recurse=False):
     exts_clean = clean_exts(exts)
@@ -47,9 +48,9 @@ def compute_file_hashes(dir, exts=None, algo=hashlib.md5, hashes={}, recurse=Fal
 Download media from a list of URLs if the hash has not been seen before.
 @param dir - Destination directory for the download.
 @param urls - List of URLs to query.
-@param algo - Algorithm used by the map of hashes.
-@param hashes - Map of seen hashes. Index is hash, value is original media name.
-@return the new map of hashes.
+@param algo - Algorithm from hashlib used by the dictionary of hashes.
+@param hashes - Dictionary of seen hashes. Index is hash, value is original media name.
+@return the new dictionary of hashes.
 """
 def download_urls(dir, urls, algo=hashlib.md5, hashes={}):
     for url in urls:
