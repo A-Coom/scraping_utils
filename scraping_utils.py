@@ -61,7 +61,11 @@ def download_urls(dir, urls, algo=hashlib.md5, hashes={}):
         stdout.write('[download_urls] INFO: Media from %s:\t\t' % (url))
         ext = url.split('.')[-1]
         name = url.split('/')[-1]
-        img = requests.get(url).content
+        res = requests.get(url)
+        if(res.status_code == 404):
+            stdout.write('Page does not exist.\n')
+            continue
+        img = res.content
         hash = algo(img).hexdigest()
         if(hash not in hashes):
             hashes[hash] = name
