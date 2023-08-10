@@ -58,18 +58,24 @@ Download media from a list of URLs if the hash has not been seen before.
 """
 def download_urls(dir, urls, algo=hashlib.md5, hashes={}):
     for url in urls:
-        stdout.write('[download_urls] INFO: Media from %s:\t\t' % (url))
+        stdout.write('[download_urls] INFO: Media from %s :\t\t' % (url))
+        stdout.flush()
         ext = url.split('.')[-1]
-        name = url.split('/')[-1]
-        res = requests.get(url)
-        if(res.status_code == 404):
-            stdout.write('Page does not exist.\n')
+        name = url.split('/')[-1].split('.')[0]
+        try:
+            res = requests.get(url)
+            if(res.status_code == 404):
+                stdout.write('Page does not exist.\n')
+                continue
+            img = res.content
+        except:
+            stdout.write('Failure during retrieval! Skipping.\n')
             continue
-        img = res.content
         hash = algo(img).hexdigest()
         if(hash not in hashes):
             hashes[hash] = name
             stdout.write('Downloading as %s\n' % (hash + '.' + ext))
+            stdout.flush()
             with open(join(dir, hash + '.' + ext), 'wb') as file_out:
                 file_out.write(img)
         else:
