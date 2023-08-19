@@ -1,8 +1,14 @@
-import hashlib
-import requests
 from os import listdir
 from os.path import join, isfile, isdir
 from sys import stdout
+import hashlib
+import requests
+import time
+
+
+NOT_FOUND = 404
+TOO_MANY_REQUESTS = 429
+THROTTLE_TIME = 30
 
 
 """
@@ -63,21 +69,32 @@ def download_urls(dir, urls, algo=hashlib.md5, hashes={}):
         ext = url.split('.')[-1]
         name = url.split('/')[-1].split('.')[0]
         try:
-            res = requests.get(url)
-            if(res.status_code == 404):
-                stdout.write('Page does not exist.\n')
-                continue
-            img = res.content
+            media = None
+            while(True):
+                res = requests.get(url)
+                if(res.status_code == TOO_MANY_REQUESTS):
+                    stdout.write('Too many requests, delaying %d seconds. This usually happens while downloading multiple LARGE files, so have patience.\n' % (THROTTLE_TIME))
+                    res.close()
+                    time.sleep(THROTTLE_TIME)
+                else:
+                    if(res.status_code == NOT_FOUND):
+                        stdout.write('Page does not exist, skipping\n')
+                    else:
+                        media = res.content
+                    res.close()
+                    break
         except:
-            stdout.write('Failure during retrieval! Skipping.\n')
+            stdout.write('Unknown failure during retrieval, skipping.\n')
             continue
-        hash = algo(img).hexdigest()
+        if(media is None):
+            continue
+        hash = algo(media).hexdigest()
         if(hash not in hashes):
             hashes[hash] = name
             stdout.write('Downloading as %s\n' % (hash + '.' + ext))
             stdout.flush()
             with open(join(dir, hash + '.' + ext), 'wb') as file_out:
-                file_out.write(img)
+                file_out.write(media)
         else:
-            stdout.write('Duplicate image of %s\n' % hashes[hash])
+            stdout.write('Duplicate media of %s\n' % hashes[hash])
     return hashes
