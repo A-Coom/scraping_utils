@@ -1,6 +1,7 @@
-from os import listdir
+from os import listdir, system, name
 from os.path import join, isfile, isdir
 from sys import stdout
+from threading import Thread, enumerate
 import hashlib
 import requests
 import time
@@ -8,7 +9,81 @@ import time
 
 NOT_FOUND = 404
 TOO_MANY_REQUESTS = 429
-THROTTLE_TIME = 30
+
+MAX_THREADS = 8
+THROTTLE_TIME = MAX_THREADS * 2
+THREAD_CLASS_NAME = 'DownloadThread'
+
+IMG_EXTS = [ 'jpg', 'jpeg', 'png', 'gif' ]
+VID_EXTS = [ 'mp4', 'm4v', 'mkv', 'mov', 'wmv', 'webm', 'avi', 'flv']
+
+
+"""
+A class to download a URL to a directory on a separate thread.
+"""
+class DownloadThread(Thread):
+    # Constants to describe the status of the thread
+    ERROR = -1
+    STANDBY = 0
+    DOWNLOADING = 1
+    HASHING = 2
+    WRITING = 3
+    FINISHED = 4
+    
+    # Initialize this DownloadThread
+    def __init__(self, url, dst, algo=hashlib.md5, hashes={}):
+        Thread.__init__(self)
+        self.url = url
+        self.dst = dst
+        self.hashes = hashes
+        self.algo = algo
+        self.status = self.STANDBY
+    
+    # Perform downloading until successful or deemed impossible
+    def run(self):
+        ext = self.url.split('.')[-1]
+        name = self.url.split('/')[-1].split('.')[0]
+        media = None
+        try:
+            while(self.status == self.STANDBY):
+                self.status = self.DOWNLOADING
+                res = requests.get(self.url)
+                if(res.status_code == TOO_MANY_REQUESTS):
+                    self.status = self.STANDBY
+                    time.sleep(THROTTLE_TIME)
+                elif(res.status_code != NOT_FOUND):
+                    media = res.content
+        except:
+            self.status = self.ERROR
+            return
+        
+        if(media is None):
+            self.status = self.ERROR
+            return
+        
+        self.status = self.HASHING
+        hash = self.algo(media).hexdigest()
+        if(hash in self.hashes):
+            self.status = self.FINISHED
+            return
+
+        self.status = self.WRITING
+        self.hashes[hash] = name
+        with open(join(self.dst, hash + '.' + ext), 'wb') as file_out:
+            file_out.write(media)
+        self.status = self.FINISHED
+
+    # Print the information for this DownloadThread
+    def print_status(self):
+        status_char = ''
+        if(self.status == self.STANDBY): status_char = 'S'
+        elif(self.status == self.DOWNLOADING): status_char = 'D'
+        elif(self.status == self.HASHING): status_char = 'H'
+        elif(self.status == self.WRITING): status_char = 'W'
+        elif(self.status == self.FINISHED): status_char = 'F'
+        elif(self.status == self.ERROR): status_char = 'E'
+        else: status_char = '?'
+        stdout.write('[%s] %s\n' % (status_char, self.url))
 
 
 """
@@ -40,7 +115,7 @@ def compute_file_hashes(dir, exts=None, algo=hashlib.md5, hashes={}, recurse=Fal
         full_name = join(dir, name)
         ext = name.split('.')[-1]
         if(isfile(full_name) and (exts_clean is None or ext in exts_clean)):
-            stdout.write('[compute_file_hashes] INFO Hashing (%s)... ' % (full_name))
+            stdout.write('[compute_file_hashes] INFO: Hashing (%s)... ' % (full_name))
             with open(full_name, 'rb') as file_in:
                 file_bytes = file_in.read()
                 file_hash = algo(file_bytes).hexdigest()
@@ -73,7 +148,7 @@ def download_urls(dir, urls, algo=hashlib.md5, hashes={}):
             while(True):
                 res = requests.get(url)
                 if(res.status_code == TOO_MANY_REQUESTS):
-                    stdout.write('Too many requests, delaying %d seconds. This usually happens while downloading multiple LARGE files, so have patience.\n' % (THROTTLE_TIME))
+                    stdout.write('Too many requests, delaying %d seconds. This is normal; have patience.\n' % (THROTTLE_TIME))
                     res.close()
                     time.sleep(THROTTLE_TIME)
                 else:
@@ -97,4 +172,53 @@ def download_urls(dir, urls, algo=hashlib.md5, hashes={}):
                 file_out.write(media)
         else:
             stdout.write('Duplicate media of %s\n' % hashes[hash])
+    return hashes
+
+
+"""
+Orchestrate multi-threaded downloads.
+@param urls - List of URLs to download.
+@param pics_dst - Destination for pictures.
+@param vids_dst - Destination for videos.
+@param hashes - Dictionary of hashes for existing downloaded media.
+@return the updated hash table.
+"""
+def multithread_download_urls(urls, pics_dst, vids_dst, algo=hashlib.md5, hashes={}):
+    pos = 0
+    while(pos < len(urls)):
+    
+        download_threads = enumerate()
+        
+        while(len(download_threads) - 1 < MAX_THREADS):
+            thread_url = urls[pos]
+            thread_ext = thread_url.split('.')[-1]
+            thread_dst = pics_dst if thread_ext in IMG_EXTS else vids_dst
+            thread = DownloadThread(thread_url, thread_dst, algo=algo, hashes=hashes);
+            thread.start()
+            
+            pos = pos + 1
+            download_threads.append(thread)
+            if(pos >= len(urls)):
+                break
+            
+        system('cls') if name == 'nt' else system('clear')
+        for thread in download_threads:
+            if(thread.__class__.__name__ == THREAD_CLASS_NAME):
+                thread.print_status()
+        time.sleep(1)
+
+    remaining = enumerate()
+    while(len(remaining) > 1):
+        system('cls') if name == 'nt' else system('clear')
+        for thread in download_threads:
+            if(thread.__class__.__name__ == THREAD_CLASS_NAME):
+                thread.print_status()
+        time.sleep(1)
+        remaining = enumerate()
+    
+    system('cls') if name == 'nt' else system('clear')
+    for thread in download_threads:
+        if(thread.__class__.__name__ == THREAD_CLASS_NAME):
+            thread.print_status()
+    
     return hashes
