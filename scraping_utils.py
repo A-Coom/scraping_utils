@@ -76,12 +76,12 @@ class DownloadThread(Thread):
     # Print the information for this DownloadThread
     def print_status(self):
         status_char = ''
-        if(self.status == self.STANDBY): status_char = 'S'
-        elif(self.status == self.DOWNLOADING): status_char = 'D'
-        elif(self.status == self.HASHING): status_char = 'H'
-        elif(self.status == self.WRITING): status_char = 'W'
-        elif(self.status == self.FINISHED): status_char = 'F'
-        elif(self.status == self.ERROR): status_char = 'E'
+        if(self.status == self.STANDBY): status_char = ' S '
+        elif(self.status == self.DOWNLOADING): status_char = '1/3'
+        elif(self.status == self.HASHING): status_char = '2/3'
+        elif(self.status == self.WRITING): status_char = '3/3'
+        elif(self.status == self.FINISHED): status_char = ' ✓ '
+        elif(self.status == self.ERROR): status_char = ' E '
         else: status_char = '?'
         stdout.write('[%s] %s\n' % (status_char, self.url))
 
