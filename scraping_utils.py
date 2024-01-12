@@ -12,7 +12,6 @@ TOO_MANY_REQUESTS = 429
 
 MAX_THREADS = 8
 THROTTLE_TIME = MAX_THREADS * 2
-THREAD_CLASS_NAME = 'DownloadThread'
 
 IMG_EXTS = [ 'jpg', 'jpeg', 'png', 'gif' ]
 VID_EXTS = [ 'mp4', 'm4v', 'mkv', 'mov', 'wmv', 'webm', 'avi', 'flv']
@@ -23,7 +22,8 @@ A class to download a URL to a directory on a separate thread.
 """
 class DownloadThread(Thread):
     # Constants to describe the status of the thread
-    ERROR = -1
+    ERROR = -99
+    TIMEOUT = -1
     STANDBY = 0
     DOWNLOADING = 1
     HASHING = 2
@@ -38,12 +38,13 @@ class DownloadThread(Thread):
         self.hashes = hashes
         self.algo = algo
         self.status = self.STANDBY
-    
+        
     # Perform downloading until successful or deemed impossible
     def run(self):
         ext = self.url.split('.')[-1]
         name = self.url.split('/')[-1].split('.')[0]
         media = None
+        
         try:
             while(self.status == self.STANDBY):
                 self.status = self.DOWNLOADING
@@ -53,6 +54,11 @@ class DownloadThread(Thread):
                     time.sleep(THROTTLE_TIME)
                 elif(res.status_code != NOT_FOUND):
                     media = res.content
+                    
+        except requests.exceptions.Timeout:
+            self.status = self.TIMEOUT
+            time.sleep(THROTTLE_TIME * 10)
+            
         except:
             self.status = self.ERROR
             return
@@ -69,7 +75,7 @@ class DownloadThread(Thread):
 
         self.status = self.WRITING
         self.hashes[hash] = name
-        with open(join(self.dst, hash + '.' + ext), 'wb') as file_out:
+        with open(join(self.dst, name + '.' + ext), 'wb') as file_out:
             file_out.write(media)
         self.status = self.FINISHED
 
@@ -77,6 +83,7 @@ class DownloadThread(Thread):
     def print_status(self):
         status_char = ''
         if(self.status == self.STANDBY): status_char = ' S '
+        elif(self.status == self.TIMEOUT): status_char = ' T '
         elif(self.status == self.DOWNLOADING): status_char = '1/3'
         elif(self.status == self.HASHING): status_char = '2/3'
         elif(self.status == self.WRITING): status_char = '3/3'
@@ -184,16 +191,30 @@ Orchestrate multi-threaded downloads.
 @return the updated hash table.
 """
 def multithread_download_urls(urls, pics_dst, vids_dst, algo=hashlib.md5, hashes={}):
+    multithread_download_urls_special(DownloadThread, urls, pics_dst, vids_dst, algo=algo, hashes=hashes)
+
+
+"""
+Orchestrate multi-threaded downloads.
+@param urls - List of URLs to download.
+@param pics_dst - Destination for pictures.
+@param vids_dst - Destination for videos.
+@param hashes - Dictionary of hashes for existing downloaded media.
+@return the updated hash table.
+"""
+def multithread_download_urls_special(DownloadThreadSubClass, urls, pics_dst, vids_dst, algo=hashlib.md5, hashes={}):
+    if(not issubclass(DownloadThreadSubClass, DownloadThread)):
+        return hashes
+        
     pos = 0
     while(pos < len(urls)):
-    
         download_threads = enumerate()
         
         while(len(download_threads) - 1 < MAX_THREADS):
             thread_url = urls[pos]
             thread_ext = thread_url.split('.')[-1]
             thread_dst = pics_dst if thread_ext in IMG_EXTS else vids_dst
-            thread = DownloadThread(thread_url, thread_dst, algo=algo, hashes=hashes);
+            thread = DownloadThreadSubClass(thread_url, thread_dst, algo=algo, hashes=hashes);
             thread.start()
             
             pos = pos + 1
@@ -203,22 +224,22 @@ def multithread_download_urls(urls, pics_dst, vids_dst, algo=hashlib.md5, hashes
             
         system('cls') if name == 'nt' else system('clear')
         for thread in download_threads:
-            if(thread.__class__.__name__ == THREAD_CLASS_NAME):
-                thread.print_status()
+            try: thread.print_status()
+            except: pass
         time.sleep(1)
 
     remaining = enumerate()
     while(len(remaining) > 1):
         system('cls') if name == 'nt' else system('clear')
         for thread in download_threads:
-            if(thread.__class__.__name__ == THREAD_CLASS_NAME):
-                thread.print_status()
+            try: thread.print_status()
+            except: pass
         time.sleep(1)
         remaining = enumerate()
     
     system('cls') if name == 'nt' else system('clear')
     for thread in download_threads:
-        if(thread.__class__.__name__ == THREAD_CLASS_NAME):
-            thread.print_status()
+        try: thread.print_status()
+        except: pass
     
     return hashes
