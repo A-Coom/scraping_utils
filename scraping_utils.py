@@ -81,7 +81,6 @@ class DownloadThread(Thread):
 
     # Print the information for this DownloadThread
     def print_status(self):
-        status_char = ''
         if(self.status == self.STANDBY): status_char = ' S '
         elif(self.status == self.TIMEOUT): status_char = ' T '
         elif(self.status == self.DOWNLOADING): status_char = '1/3'
@@ -89,7 +88,7 @@ class DownloadThread(Thread):
         elif(self.status == self.WRITING): status_char = '3/3'
         elif(self.status == self.FINISHED): status_char = ' ✓ '
         elif(self.status == self.ERROR): status_char = ' E '
-        else: status_char = '?'
+        else: status_char = ' ? '
         stdout.write('[%s] %s\n' % (status_char, self.url))
 
 
@@ -202,19 +201,30 @@ Orchestrate multi-threaded downloads.
 @param hashes - Dictionary of hashes for existing downloaded media.
 @return the updated hash table.
 """
-def multithread_download_urls_special(DownloadThreadSubClass, urls, pics_dst, vids_dst, algo=hashlib.md5, hashes={}):
-    if(not issubclass(DownloadThreadSubClass, DownloadThread)):
+def multithread_download_urls_special(Dtsc, urls, pics_dst, vids_dst, algo=hashlib.md5, hashes={}):
+    # Confirm that Dtsc is a subclass of DownloadThread (or the same class)
+    if(not issubclass(Dtsc, DownloadThread)):
         return hashes
         
+    # Print the initial status box
+    msg = f'Successfully downloaded media from 0/{len(urls)} URLs'
+    print(f'.{"="*(len(msg)+2)}.')
+    print(f'| {msg} |')
+    print(f'\'{"="*(len(msg)+2)}\'')
+    
+    # Loop until completing processing of all urls
     pos = 0
+    prevThreadCnt = 0
     while(pos < len(urls)):
-        download_threads = enumerate()
-        
-        while(len(download_threads) - 1 < MAX_THREADS):
+        # Get the number of threads
+        download_threads = list(filter(lambda t: isinstance(t, Dtsc), enumerate()))
+
+        # Start new threads up to the maximum number of threads
+        while(len(download_threads) < MAX_THREADS):
             thread_url = urls[pos]
             thread_ext = thread_url.split('.')[-1]
             thread_dst = pics_dst if thread_ext in IMG_EXTS else vids_dst
-            thread = DownloadThreadSubClass(thread_url, thread_dst, algo=algo, hashes=hashes);
+            thread = Dtsc(thread_url, thread_dst, algo=algo, hashes=hashes);
             thread.start()
             
             pos = pos + 1
@@ -222,23 +232,57 @@ def multithread_download_urls_special(DownloadThreadSubClass, urls, pics_dst, vi
             if(pos >= len(urls)):
                 break
             
-        system('cls') if name == 'nt' else system('clear')
+        # Clear the previous status box and status of each thread
+        for _ in range(0, prevThreadCnt+3): stdout.write('\033[F')
+        
+        # Print the status box
+        msg = f'Successfully downloaded media from {pos-MAX_THREADS}/{len(urls)} URLs'
+        print(f'.{"="*(len(msg)+2)}.')
+        print(f'| {msg} |')
+        print(f'\'{"="*(len(msg)+2)}\'')
+        
+        # Print the status of each thread
         for thread in download_threads:
             try: thread.print_status()
             except: pass
+            
+        # Update the number of status messages that were printed and sleep
+        prevThreadCnt = len(download_threads)
         time.sleep(1)
-
-    remaining = enumerate()
-    while(len(remaining) > 1):
-        system('cls') if name == 'nt' else system('clear')
+        
+    # Wait for the final threads to complete
+    remaining = list(filter(lambda t: isinstance(t, Dtsc), enumerate()))
+    while(len(remaining) > 0):
+        # Clear the previous status box and status of each thread
+        for _ in range(0, prevThreadCnt+3): stdout.write('\033[F')
+        
+        # Print the status box
+        msg = f'Successfully downloaded media from {pos-len(remaining)}/{len(urls)} URLs'
+        print(f'.{"="*(len(msg)+2)}.')
+        print(f'| {msg} |')
+        print(f'\'{"="*(len(msg)+2)}\'')
+        
+        # Print the status of each thread
         for thread in download_threads:
             try: thread.print_status()
             except: pass
+            
+        # Update the number of status messages that were printed and sleep
         time.sleep(1)
-        remaining = enumerate()
+        remaining = list(filter(lambda t: isinstance(t, Dtsc), enumerate()))
     
-    system('cls') if name == 'nt' else system('clear')
+    # Clear the previous status box and status of each thread
+    for _ in range(0, len(download_threads)+3): stdout.write('\033[F')
+    
+    # Print the final status box
+    msg = f'Successfully downloaded media from {pos-len(remaining)}/{len(urls)} URLs'
+    print(f'.{"="*(len(msg)+2)}.')
+    print(f'| {msg} |')
+    print(f'\'{"="*(len(msg)+2)}\'')
+    
+    # Print the final thread status
     for thread in download_threads:
+        thread.status = Dtsc.FINISHED
         try: thread.print_status()
         except: pass
     
