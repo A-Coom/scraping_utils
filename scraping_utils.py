@@ -89,7 +89,7 @@ class DownloadThread(Thread):
         elif(self.status == self.FINISHED): status_char = ' ✓ '
         elif(self.status == self.ERROR): status_char = ' E '
         else: status_char = ' ? '
-        stdout.write('[%s] %s\n' % (status_char, self.url))
+        stdout.write(f'[{status_char}] {self.url}\n')
 
 
 """
@@ -121,15 +121,16 @@ def compute_file_hashes(dir, exts=None, algo=hashlib.md5, hashes={}, recurse=Fal
         full_name = join(dir, name)
         ext = name.split('.')[-1]
         if(isfile(full_name) and (exts_clean is None or ext in exts_clean)):
-            stdout.write('[compute_file_hashes] INFO: Hashing (%s)... ' % (full_name))
+            stdout.write(f'[compute_file_hashes] INFO: Hashing ({full_name})... ')
+            stdout.flush()
             with open(full_name, 'rb') as file_in:
                 file_bytes = file_in.read()
                 file_hash = algo(file_bytes).hexdigest()
             if(file_hash not in hashes):
                 hashes[file_hash] = full_name
-                stdout.write('unique hash (%d).\n' % len(hashes))
+                stdout.write(f'unique hash ({len(hashes)}).\n')
             else:
-                stdout.write('duplicate of (%s).\n' % (hashes[file_hash]))
+                stdout.write(f'duplicate of ({hashes[file_hash]}).\n')
         elif(recurse and isdir(full_name)):
             hashes = compute_file_hashes(full_name, exts=exts, algo=algo, hashes=hashes, recurse=True)
     return hashes
@@ -145,7 +146,7 @@ Download media from a list of URLs if the hash has not been seen before.
 """
 def download_urls(dir, urls, algo=hashlib.md5, hashes={}):
     for url in urls:
-        stdout.write('[download_urls] INFO: Media from %s :\t\t' % (url))
+        stdout.write(f'[download_urls] INFO: Media from {url} :\t\t')
         stdout.flush()
         ext = url.split('.')[-1]
         name = url.split('/')[-1].split('.')[0]
@@ -154,7 +155,7 @@ def download_urls(dir, urls, algo=hashlib.md5, hashes={}):
             while(True):
                 res = requests.get(url)
                 if(res.status_code == TOO_MANY_REQUESTS):
-                    stdout.write('Too many requests, delaying %d seconds. This is normal; have patience.\n' % (THROTTLE_TIME))
+                    stdout.write(f'Too many requests, delaying {THROTTLE_TIME} seconds.\n')
                     res.close()
                     time.sleep(THROTTLE_TIME)
                 else:
@@ -172,12 +173,12 @@ def download_urls(dir, urls, algo=hashlib.md5, hashes={}):
         hash = algo(media).hexdigest()
         if(hash not in hashes):
             hashes[hash] = name
-            stdout.write('Downloading as %s\n' % (hash + '.' + ext))
+            stdout.write(f'Downloading as {hash}.{ext}\n')
             stdout.flush()
-            with open(join(dir, hash + '.' + ext), 'wb') as file_out:
+            with open(join(dir, f'{hash}.{ext}'), 'wb') as file_out:
                 file_out.write(media)
         else:
-            stdout.write('Duplicate media of %s\n' % hashes[hash])
+            stdout.write(f'Duplicate media of {hashes[hash]}\n')
     return hashes
 
 
