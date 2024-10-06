@@ -14,7 +14,7 @@ MAX_THREADS = 8
 THROTTLE_TIME = MAX_THREADS * 2
 
 IMG_EXTS = [ 'jpg', 'jpeg', 'png', 'gif' ]
-VID_EXTS = [ 'mp4', 'm4v', 'mkv', 'mov', 'wmv', 'webm', 'avi', 'flv']
+VID_EXTS = [ 'mp4', 'm4v', 'mkv', 'mov', 'wmv', 'webm', 'avi', 'flv', 'mp3' ]
 
 
 """
@@ -31,8 +31,9 @@ class DownloadThread(Thread):
     FINISHED = 4
     
     # Initialize this DownloadThread
-    def __init__(self, url, dst, algo=hashlib.md5, hashes={}):
+    def __init__(self, file_name, url, dst, algo=hashlib.md5, hashes={}):
         Thread.__init__(self)
+        self.name = file_name
         self.url = url
         self.dst = dst
         self.hashes = hashes
@@ -110,7 +111,7 @@ def clean_exts(exts):
 Compute the hashes of files with specified extensions using a specified algorithm function.
 @param dir - String of directory to process.
 @param exts - List of extensions. If None, then all extensions are queried.
-@param algo - Function for the hashing algorithm from hashlib.
+@param algo - Function for the hashing algorithm from hashlib (default=md5).
 @param hashes - Dictionary of seen hashes. Index is hash, value is original media name.
 @param recurse - If true, subdirectories are traversed. If false, subdirectories are skipped.
 @return a dictionary indexed by hash value storing the file name.
@@ -140,7 +141,7 @@ def compute_file_hashes(dir, exts=None, algo=hashlib.md5, hashes={}, recurse=Fal
 Download media from a list of URLs if the hash has not been seen before.
 @param dir - Destination directory for the download.
 @param urls - List of URLs to query.
-@param algo - Algorithm from hashlib used by the dictionary of hashes.
+@param algo - Function for the hashing algorithm from hashlib (default=md5).
 @param hashes - Dictionary of seen hashes. Index is hash, value is original media name.
 @return the new dictionary of hashes.
 """
@@ -184,9 +185,10 @@ def download_urls(dir, urls, algo=hashlib.md5, hashes={}):
 
 """
 Orchestrate multi-threaded downloads.
-@param urls - List of URLs to download.
+@param urls - Dictionary of named URLs to download.
 @param pics_dst - Destination for pictures.
 @param vids_dst - Destination for videos.
+@param algo - Function for the hashing algorithm from hashlib (default=md5).
 @param hashes - Dictionary of hashes for existing downloaded media.
 @return the updated hash table.
 """
@@ -196,9 +198,11 @@ def multithread_download_urls(urls, pics_dst, vids_dst, algo=hashlib.md5, hashes
 
 """
 Orchestrate multi-threaded downloads.
-@param urls - List of URLs to download.
+@param Dtsc - DownloadThread subclass to handle downloading.
+@param urls - Dictionary of named URLs to download.
 @param pics_dst - Destination for pictures.
 @param vids_dst - Destination for videos.
+@param algo - Function for the hashing algorithm from hashlib (default=md5).
 @param hashes - Dictionary of hashes for existing downloaded media.
 @return the updated hash table.
 """
@@ -212,6 +216,9 @@ def multithread_download_urls_special(Dtsc, urls, pics_dst, vids_dst, algo=hashl
     print(f'.{"="*(len(msg)+2)}.')
     print(f'| {msg} |')
     print(f'\'{"="*(len(msg)+2)}\'')
+
+    # Sort the name of URLs to downloaded newest-to-oldest
+    names = sorted(list(urls.keys()), reverse=True)
     
     # Loop until completing processing of all urls
     pos = 0
@@ -222,10 +229,10 @@ def multithread_download_urls_special(Dtsc, urls, pics_dst, vids_dst, algo=hashl
 
         # Start new threads up to the maximum number of threads
         while(len(download_threads) < MAX_THREADS):
-            thread_url = urls[pos]
+            thread_url = urls[names[pos]]
             thread_ext = thread_url.split('.')[-1]
             thread_dst = pics_dst if thread_ext in IMG_EXTS else vids_dst
-            thread = Dtsc(thread_url, thread_dst, algo=algo, hashes=hashes);
+            thread = Dtsc(names[pos], thread_url, thread_dst, algo=algo, hashes=hashes);
             thread.start()
             
             pos = pos + 1
