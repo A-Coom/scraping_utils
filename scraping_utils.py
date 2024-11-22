@@ -9,9 +9,10 @@ import time
 
 NOT_FOUND = 404
 TOO_MANY_REQUESTS = 429
+CONNECTION_RESET = 104
 
 MAX_THREADS = 8
-THROTTLE_TIME = MAX_THREADS * 2
+THROTTLE_TIME = MAX_THREADS * 4
 
 IMG_EXTS = [ 'jpg', 'jpeg', 'png', 'gif' ]
 VID_EXTS = [ 'mp4', 'm4v', 'mkv', 'mov', 'wmv', 'webm', 'avi', 'flv', 'mp3' ]
@@ -24,11 +25,13 @@ class DownloadThread(Thread):
     # Constants to describe the status of the thread
     ERROR = -99
     TIMEOUT = -1
+
     STANDBY = 0
-    DOWNLOADING = 1
+    CONNECTING = 1
     HASHING = 2
-    WRITING = 3
-    FINISHED = 4
+    DOWNLOADING = 3
+    WRITING = 4
+    FINISHED = 5
     
     # Initialize this DownloadThread
     def __init__(self, file_name, url, dst, algo=hashlib.md5, hashes={}):
@@ -84,9 +87,10 @@ class DownloadThread(Thread):
     def print_status(self):
         if(self.status == self.STANDBY): status_char = ' S '
         elif(self.status == self.TIMEOUT): status_char = ' T '
-        elif(self.status == self.DOWNLOADING): status_char = '1/3'
-        elif(self.status == self.HASHING): status_char = '2/3'
-        elif(self.status == self.WRITING): status_char = '3/3'
+        elif(self.status == self.CONNECTING): status_char = '1/4'
+        elif(self.status == self.HASHING): status_char = '2/4'
+        elif(self.status == self.DOWNLOADING): status_char = '3/4'
+        elif(self.status == self.WRITING): status_char = '4/4'
         elif(self.status == self.FINISHED): status_char = ' ✓ '
         elif(self.status == self.ERROR): status_char = ' E '
         else: status_char = ' ? '
@@ -113,27 +117,32 @@ Compute the hashes of files with specified extensions using a specified algorith
 @param exts - List of extensions. If None, then all extensions are queried.
 @param algo - Function for the hashing algorithm from hashlib (default=md5).
 @param hashes - Dictionary of seen hashes. Index is hash, value is original media name.
+@param short - If true, only the first 64 kilobytes of the file will be hashed.
 @param recurse - If true, subdirectories are traversed. If false, subdirectories are skipped.
 @return a dictionary indexed by hash value storing the file name.
 """
-def compute_file_hashes(dir, exts=None, algo=hashlib.md5, hashes={}, recurse=False):
+def compute_file_hashes(dir, exts=None, algo=hashlib.md5, hashes={}, short=False, recurse=False):
     exts_clean = clean_exts(exts)
     for name in listdir(dir):
         full_name = join(dir, name)
         ext = name.split('.')[-1]
+
         if(isfile(full_name) and (exts_clean is None or ext in exts_clean)):
             stdout.write(f'[compute_file_hashes] INFO: Hashing ({full_name})... ')
             stdout.flush()
             with open(full_name, 'rb') as file_in:
-                file_bytes = file_in.read()
+                file_bytes = short and file_in.read(1024 * 64) or file_in.read()
                 file_hash = algo(file_bytes).hexdigest()
+
             if(file_hash not in hashes):
                 hashes[file_hash] = full_name
                 stdout.write(f'unique hash ({len(hashes)}).\n')
             else:
                 stdout.write(f'duplicate of ({hashes[file_hash]}).\n')
-        elif(recurse and isdir(full_name)):
+
+        elif(isdir(full_name) and recurse):
             hashes = compute_file_hashes(full_name, exts=exts, algo=algo, hashes=hashes, recurse=True)
+
     return hashes
 
 
@@ -244,7 +253,8 @@ def multithread_download_urls_special(Dtsc, urls, pics_dst, vids_dst, algo=hashl
         for _ in range(0, prevThreadCnt+3): stdout.write('\033[F')
         
         # Print the status box
-        msg = f'Successfully downloaded media from {pos-MAX_THREADS}/{len(urls)} URLs'
+        howManyCompleted = max(0, pos-MAX_THREADS)
+        msg = f'Successfully downloaded media from {howManyCompleted}/{len(urls)} URLs'
         print(f'.{"="*(len(msg)+2)}.')
         print(f'| {msg} |')
         print(f'\'{"="*(len(msg)+2)}\'')
