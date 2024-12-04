@@ -232,6 +232,7 @@ def multithread_download_urls_special(Dtsc, urls, pics_dst, vids_dst, algo=hashl
     # Loop until completing processing of all urls
     pos = 0
     prevThreadCnt = 0
+    download_threads = []
     while(pos < len(urls)):
         # Get the number of threads
         download_threads = list(filter(lambda t: isinstance(t, Dtsc), enumerate()))
