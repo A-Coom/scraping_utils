@@ -14,7 +14,7 @@ CONNECTION_RESET = 104
 MAX_THREADS = 8
 THROTTLE_TIME = MAX_THREADS * 4
 
-IMG_EXTS = [ 'jpg', 'jpeg', 'png', 'gif' ]
+IMG_EXTS = [ 'jpg', 'jpeg', 'png', 'gif', 'webp' ]
 VID_EXTS = [ 'mp4', 'm4v', 'mkv', 'mov', 'wmv', 'webm', 'avi', 'flv', 'mp3' ]
 
 
@@ -45,8 +45,6 @@ class DownloadThread(Thread):
         
     # Perform downloading until successful or deemed impossible
     def run(self):
-        ext = self.url.split('.')[-1]
-        name = self.url.split('/')[-1].split('.')[0]
         media = None
         
         try:
@@ -78,8 +76,8 @@ class DownloadThread(Thread):
             return
 
         self.status = self.WRITING
-        self.hashes[hash] = name
-        with open(join(self.dst, name + '.' + ext), 'wb') as file_out:
+        self.hashes[hash] = self.name
+        with open(join(self.dst, self.name), 'wb') as file_out:
             file_out.write(media)
         self.status = self.FINISHED
 
