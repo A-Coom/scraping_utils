@@ -42,6 +42,8 @@ class DownloadThread(Thread):
         self.hashes = hashes
         self.algo = algo
         self.status = self.STANDBY
+        self.total_size = 1
+        self.downloaded = 0
         
     # Perform downloading until successful or deemed impossible
     def run(self):
@@ -51,6 +53,8 @@ class DownloadThread(Thread):
             while(self.status == self.STANDBY):
                 self.status = self.DOWNLOADING
                 res = requests.get(self.url)
+                self.total_size = int(res.headers.get("content-length", 0))
+                self.downloaded = len(res.content)
                 if(res.status_code == TOO_MANY_REQUESTS):
                     self.status = self.STANDBY
                     time.sleep(THROTTLE_TIME)
@@ -92,7 +96,7 @@ class DownloadThread(Thread):
         elif(self.status == self.FINISHED): status_char = ' ✓ '
         elif(self.status == self.ERROR): status_char = ' E '
         else: status_char = ' ? '
-        stdout.write(f'[{status_char}] {self.url}\n')
+        stdout.write(f'[{status_char} - {self.downloaded / self.total_size:6.1%}] {self.url}\n')
 
 
 """
