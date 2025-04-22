@@ -133,15 +133,17 @@ def compute_file_hashes(dir, exts=None, algo=hashlib.md5, hashes={}, short=False
             stdout.write(f'[compute_file_hashes] INFO: Hashing ({full_name})... ')
             stdout.flush()
             with open(full_name, 'rb') as file_in:
+                file_hash = algo
                 if short:
-                    file_hash = algo(file_in.read(1024 * 64).hexdigest()
+                    chunk = file_in.read(1024 * 64)
+                    file_hash.update(chunk)
                 else:
                     while True:
-                        chunk = file_in.read(1024 * 1024 * 2)
+                        chunk = file_in.read(1024 * 1024 * 128)
                         if not chunk:
                             break
-                        algo.update(chunk)
-                    file_hash = algo.hexdigest()
+                        file_hash.update(chunk)
+                file_hash = file_hash.hexdigest()
 
             if(file_hash not in hashes):
                 hashes[file_hash] = full_name
