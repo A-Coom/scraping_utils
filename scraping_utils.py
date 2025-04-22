@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from os import listdir, system, name
 from os.path import join, isfile, isdir
 from sys import stdout
@@ -133,7 +135,7 @@ def compute_file_hashes(dir, exts=None, algo=hashlib.md5, hashes={}, short=False
             stdout.write(f'[compute_file_hashes] INFO: Hashing ({full_name})... ')
             stdout.flush()
             with open(full_name, 'rb') as file_in:
-                file_hash = algo
+                file_hash = algo()
                 if short:
                     chunk = file_in.read(1024 * 64)
                     file_hash.update(chunk)
