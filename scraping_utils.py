@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from os import listdir, system, name
-from os.path import join, isfile, isdir
+from os.path import join, isfile, isdir, commonpath
 from sys import stdout
 from threading import Thread, enumerate
 import hashlib
@@ -234,7 +234,8 @@ def multithread_download_urls_special(Dtsc, urls, pics_dst, vids_dst, algo=hashl
         return hashes
         
     # Print the initial status box
-    msg = f'Successfully downloaded media from 0/{len(urls)} URLs'
+    dst = commonpath([pics_dst, vids_dst])
+    msg = f'Successfully downloaded media from 0/{len(urls)} URLs to {dst}'
     print(f'.{"="*(len(msg)+2)}.')
     print(f'| {msg} |')
     print(f'\'{"="*(len(msg)+2)}\'')
