@@ -1,5 +1,7 @@
+#!/usr/bin/env python3
+
 from os import listdir, system, name
-from os.path import join, isfile, isdir
+from os.path import join, isfile, isdir, commonpath
 from sys import stdout
 from threading import Thread, enumerate
 import hashlib
@@ -133,8 +135,17 @@ def compute_file_hashes(dir, exts=None, algo=hashlib.md5, hashes={}, short=False
             stdout.write(f'[compute_file_hashes] INFO: Hashing ({full_name})... ')
             stdout.flush()
             with open(full_name, 'rb') as file_in:
-                file_bytes = short and file_in.read(1024 * 64) or file_in.read()
-                file_hash = algo(file_bytes).hexdigest()
+                file_hash = algo()
+                if short:
+                    chunk = file_in.read(1024 * 64)
+                    file_hash.update(chunk)
+                else:
+                    while True:
+                        chunk = file_in.read(1024 * 1024 * 128)
+                        if not chunk:
+                            break
+                        file_hash.update(chunk)
+                file_hash = file_hash.hexdigest()
 
             if(file_hash not in hashes):
                 hashes[file_hash] = full_name
@@ -223,7 +234,8 @@ def multithread_download_urls_special(Dtsc, urls, pics_dst, vids_dst, algo=hashl
         return hashes
         
     # Print the initial status box
-    msg = f'Successfully downloaded media from 0/{len(urls)} URLs'
+    dst = commonpath([pics_dst, vids_dst])
+    msg = f'Successfully downloaded media from 0/{len(urls)} URLs to {dst}'
     print(f'.{"="*(len(msg)+2)}.')
     print(f'| {msg} |')
     print(f'\'{"="*(len(msg)+2)}\'')
@@ -257,7 +269,7 @@ def multithread_download_urls_special(Dtsc, urls, pics_dst, vids_dst, algo=hashl
         
         # Print the status box
         howManyCompleted = max(0, pos-MAX_THREADS)
-        msg = f'Successfully downloaded media from {howManyCompleted}/{len(urls)} URLs'
+        msg = f'Successfully downloaded media from {howManyCompleted}/{len(urls)} URLs to {dst}'
         print(f'.{"="*(len(msg)+2)}.')
         print(f'| {msg} |')
         print(f'\'{"="*(len(msg)+2)}\'')
@@ -278,7 +290,7 @@ def multithread_download_urls_special(Dtsc, urls, pics_dst, vids_dst, algo=hashl
         for _ in range(0, prevThreadCnt+3): stdout.write('\033[F')
         
         # Print the status box
-        msg = f'Successfully downloaded media from {pos-len(remaining)}/{len(urls)} URLs'
+        msg = f'Successfully downloaded media from {pos-len(remaining)}/{len(urls)} URLs to {dst}'
         print(f'.{"="*(len(msg)+2)}.')
         print(f'| {msg} |')
         print(f'\'{"="*(len(msg)+2)}\'')
@@ -296,7 +308,7 @@ def multithread_download_urls_special(Dtsc, urls, pics_dst, vids_dst, algo=hashl
     for _ in range(0, len(download_threads)+3): stdout.write('\033[F')
     
     # Print the final status box
-    msg = f'Successfully downloaded media from {pos-len(remaining)}/{len(urls)} URLs'
+    msg = f'Successfully downloaded media from {pos-len(remaining)}/{len(urls)} URLs to {dst}'
     print(f'.{"="*(len(msg)+2)}.')
     print(f'| {msg} |')
     print(f'\'{"="*(len(msg)+2)}\'')
