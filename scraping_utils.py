@@ -50,11 +50,24 @@ class DownloadThread(Thread):
     # Perform downloading until successful or deemed impossible
     def run(self):
         media = None
+
+        headers = {
+            'User-Agent': (
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                'AppleWebKit/537.36 (KHTML, like Gecko) '
+                'Chrome/122.0.0.0 Safari/537.36'
+            ),
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Referer': self.url,
+        }
         
         try:
             while(self.status == self.STANDBY):
                 self.status = self.DOWNLOADING
-                res = requests.get(self.url)
+                res = requests.get(self.url, headers=headers)
                 self.total_size = int(res.headers.get("content-length", 0))
                 self.downloaded = len(res.content)
                 if(res.status_code == TOO_MANY_REQUESTS):
